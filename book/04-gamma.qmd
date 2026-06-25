@@ -52,7 +52,6 @@ library(cookbook)
 library(tidyverse)
 library(car)
 library(lmtest)
-library(fastDummies)
 
 # Setting up Python dependencies
 library(reticulate)
@@ -657,12 +656,19 @@ To avoid **multicollinearity** (perfect correlation among dummies), we drop one 
 ::: {.panel-tabset}
 ## R Code
 ```{r}
-gamma_server_encoded <- fastDummies::dummy_cols(
-  gamma_server,
-  select_columns = c("day_of_week", "geographic_region", "request_complexity", "cdn_usage"),
-  remove_first_dummy = TRUE,
-  remove_selected_columns = TRUE
-)
+make_dummies <- function(data, columns) {
+  for (column in columns) {
+    values <- factor(data[[column]])
+    for (level in levels(values)[-1]) {
+      data[[paste0(column, "_", level)]] <- as.integer(values == level)
+    }
+    data[[column]] <- NULL
+  }
+  data
+}
+
+categorical_vars <- c("day_of_week", "geographic_region", "request_complexity", "cdn_usage")
+gamma_server_encoded <- make_dummies(gamma_server, categorical_vars)
 
 # Print resulting column names  
 colnames(gamma_server_encoded)  
@@ -1433,3 +1439,649 @@ Finally, regional differences highlight potential network-level optimization opp
 And that wraps up the entire data science workflow. By walking through a complete example from start to finish, we have seen how Gamma regression fits naturally into each stage of the process, from study design and exploratory analysis to modeling, diagnostics, and storytelling. This chapter showed how Gamma regression provides a principled way to model continuous, strictly positive, and right-skewed outcomes, and how it can transform raw data into meaningful insights.
 
 Gamma regression is a powerful tool, but the workflow that surrounds it is even more important. Asking the right question, understanding the data, choosing an appropriate model, checking that the model fits well, and interpreting the results in context are the steps that make an analysis reliable and useful. With these ideas in place, you can confidently apply Gamma regression to real problems and guide decisions with evidence.
+
+## Practice Problems
+
+In this final section, you can test your understanding with the following conceptual interactive exercises, and then proceed to work through an inferential analysis of a simple dataset.
+
+::: {.quiz}
+
+### Conceptual Questions
+
+::: {.Question}
+::::{.Question-header}
+Question 4.1
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+Which response variable would be most appropriate for a Gamma regression model? Select the correct option:
+
+**A.** Whether a customer clicked on an advertisement, coded as `Yes` or `No`.
+
+**B.** The number of support tickets submitted by a user in one month.
+
+**C.** The response time of a web server in milliseconds, where all values are positive and the distribution is right-skewed.
+
+**D.** A student's letter grade, with categories `A`, `B`, `C`, `D`, and `F`.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.1
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** C.
+
+**Rationale:**
+
+Gamma regression is designed for response variables that are **continuous**, **strictly positive**, and often **right-skewed**. A binary response would suggest logistic regression, a count response would suggest a count regression model, and an unordered categorical response would suggest a categorical outcome model.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.2
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+Why can ordinary linear regression be a poor choice for modeling positive, right-skewed outcomes such as `response_time_ms`? Select the correct option:
+
+**A.** Ordinary linear regression always requires the response variable to be categorical.
+
+**B.** Ordinary linear regression can produce negative fitted values and assumes constant variance around a linear mean structure.
+
+**C.** Ordinary linear regression cannot include more than one predictor.
+
+**D.** Ordinary linear regression forces all fitted values to be between 0 and 1.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.2
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** B.
+
+**Rationale:**
+
+For positive, skewed outcomes, ordinary linear regression can produce impossible negative predictions and may fail to capture increasing variability as the mean grows. Gamma regression with a log link keeps the expected response positive and is built for outcomes whose variability often increases with the mean.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.3
+::::
+::::{.Question-container}
+**Short Answer**
+
+The chapter describes the Gamma distribution as flexible because of its shape parameter. In words, what happens to the distribution when the shape parameter is small versus when it is larger?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.3
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Answer:**
+
+When the shape parameter is small, the Gamma distribution is strongly right-skewed: many observations are near zero, with a long tail of larger values. When the shape parameter is larger, the distribution becomes more balanced and less sharply skewed, while still only allowing positive values.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.4
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+In the GLM framework, which component specifies the probability distribution of the response variable? Select the correct option:
+
+**A.** The random component.
+
+**B.** The systematic component.
+
+**C.** The link function.
+
+**D.** The deviance residual.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.4
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** A.
+
+**Rationale:**
+
+The **random component** specifies the distribution of the response variable. In Gamma regression, this means assuming the response is Gamma-distributed, which is appropriate for continuous, positive, right-skewed outcomes.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.5
+::::
+::::{.Question-container}
+**Short Answer**
+
+In Gamma regression with a log link, the model uses
+
+$$
+\log(\mu_i) = \eta_i.
+$$
+
+Why does this help keep the expected response $\mu_i$ positive?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.5
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+If $\log(\mu_i) = \eta_i$, then $\mu_i = \exp(\eta_i)$. The exponential function is always positive, so the fitted mean response is always greater than zero, no matter what value the linear predictor takes.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.6
+::::
+::::{.Question-container}
+**Short Answer**
+
+The chapter states that Gamma regression often assumes
+
+$$
+\operatorname{Var}(Y_i) = \phi \mu_i^2.
+$$
+
+What does this imply about observations with larger expected response times?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.6
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+This variance relationship means that observations with larger expected response times also have larger variance. In practical terms, requests expected to be slower may also be more variable, which matches many cost, duration, and latency datasets.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.7
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+Which statement best describes the systematic component of the Gamma regression model in this chapter? Select the correct option:
+
+**A.** It is the histogram of `response_time_ms`.
+
+**B.** It is the linear predictor $\eta_i = \beta_0 + \beta_1 x_{i1} + \cdots + \beta_p x_{ip}$.
+
+**C.** It is the rule that all observations must have the same response time.
+
+**D.** It is the residual deviance after fitting the model.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.7
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** B.
+
+**Rationale:**
+
+The systematic component is the linear combination of predictors. In this chapter, variables such as `concurrent_users`, `database_queries`, `cache_hit_rate`, `server_load`, and the dummy variables for categorical predictors enter the model through this linear predictor.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.8
+::::
+::::{.Question-container}
+**Short Answer**
+
+Suppose a Gamma regression model has a coefficient of $\hat{\beta} = 0.20$ for `server_load`. Interpret this coefficient on the original response scale, holding other variables fixed.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.8
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Answer:**
+
+Because the model uses a log link, exponentiating the coefficient gives the multiplicative change in the expected response. Here, $\exp(0.20) \approx 1.22$, so a one-unit increase in `server_load` is associated with about a 22% increase in expected response time, holding other variables fixed.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.9
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+If a Gamma regression coefficient is negative, what does that usually imply about the expected response on the original scale? Select the correct option:
+
+**A.** The predictor is associated with a multiplicative decrease in the expected response.
+
+**B.** The predictor makes the expected response negative.
+
+**C.** The predictor must be removed from the model.
+
+**D.** The response variable is no longer Gamma-distributed.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.9
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** A.
+
+**Rationale:**
+
+With a log link, $\exp(\hat{\beta})$ gives the multiplicative effect on the expected response. If $\hat{\beta} < 0$, then $\exp(\hat{\beta}) < 1$, which corresponds to a decrease in the expected response, not a negative fitted value.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.10
+::::
+::::{.Question-container}
+**Short Answer**
+
+In the server response case study, why does the chapter focus on an inferential analysis rather than a predictive analysis?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.10
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+The main goal is to understand which server and request characteristics are associated with average response time, not simply to forecast future response times. An inferential analysis helps quantify effects such as how CDN usage, request complexity, server load, and cache hit rate relate to expected latency.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.11
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+Before fitting a Gamma regression model, why should we check that `response_time_ms` has no zero or negative values? Select the correct option:
+
+**A.** Gamma regression requires the response to be strictly positive.
+
+**B.** Gamma regression requires every predictor to be strictly positive.
+
+**C.** Zero response times make dummy variables impossible to create.
+
+**D.** Negative response times are acceptable as long as the mean is positive.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.11
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** A.
+
+**Rationale:**
+
+The Gamma distribution is defined for positive values only. If the response contains zeros or negative values, the analyst may need to remove problematic observations, add a carefully justified offset, or choose a different modeling approach.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.12
+::::
+::::{.Question-container}
+**Short Answer**
+
+Why does the chapter use one-hot encoding for categorical predictors such as `request_complexity`, `geographic_region`, `day_of_week`, and `cdn_usage` before fitting the model?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.12
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+Gamma regression software needs numeric inputs. One-hot encoding converts category labels into binary indicator variables so they can enter the model matrix. Dropping one category from each group also creates a reference level, so the remaining coefficients are interpreted relative to that baseline category.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.13
+::::
+::::{.Question-container}
+**Short Answer**
+
+In the chapter, `Complex` is the reference category for `request_complexity`. What does the coefficient for `request_complexity_Simple` compare?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.13
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Answer:**
+
+The coefficient for `request_complexity_Simple` compares simple requests to complex requests, holding the other predictors fixed. After exponentiating the coefficient, the result describes the multiplicative change in expected response time for simple requests relative to complex requests.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.14
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+How are the coefficients in the Gamma regression model estimated in this chapter? Select the correct option:
+
+**A.** By minimizing the sum of squared residuals exactly as in OLS.
+
+**B.** By maximum likelihood estimation under the Gamma model.
+
+**C.** By choosing the coefficients that make every fitted value equal to the sample mean.
+
+**D.** By computing separate means for each category and stopping there.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.14
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** B.
+
+**Rationale:**
+
+Gamma regression is fit using **maximum likelihood estimation**. This approach uses the Gamma distributional assumption for the response, rather than minimizing squared residuals as in ordinary least squares.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.15
+::::
+::::{.Question-container}
+**Short Answer**
+
+Suppose the fitted linear predictor for a request is $\hat{\eta}_i = 4.50$. What is the fitted expected response time $\hat{\mu}_i$ under the log-link Gamma model?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.15
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+Under the log link, $\hat{\mu}_i = \exp(\hat{\eta}_i)$. Therefore,
+
+$$
+\hat{\mu}_i = \exp(4.50) \approx 90.0.
+$$
+
+If `response_time_ms` is measured in milliseconds, this corresponds to a fitted expected response time of about 90 milliseconds.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.16
+::::
+::::{.Question-container}
+**Short Answer**
+
+What should you look for in a deviance residuals versus fitted values plot when checking the fit of a Gamma regression model?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.16
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+For a well-fitting model, the deviance residuals should be centered around zero without a clear pattern, curve, or systematic trend. Large outlying residuals or visible structure may suggest missing predictors, nonlinear relationships, an inappropriate link function, or another form of model misspecification.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.17
+::::
+::::{.Question-container}
+**Multiple Choice**
+
+The chapter reports a large drop from null deviance to residual deviance. What does this suggest? Select the correct option:
+
+**A.** The model with predictors explains substantially more variation than the intercept-only model.
+
+**B.** The response variable must be normally distributed.
+
+**C.** The model has no remaining uncertainty.
+
+**D.** The predictors should all be removed.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.17
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Correct answer:** A.
+
+**Rationale:**
+
+Null deviance summarizes the error from an intercept-only model, while residual deviance summarizes the remaining error after including predictors. A large decrease suggests that the predictors improve the model's ability to explain variation in the response.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.18
+::::
+::::{.Question-container}
+**Short Answer**
+
+Why is AIC most useful when comparing two or more candidate models rather than when reading a single model summary in isolation?
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.18
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Rationale:**
+
+AIC balances model fit against model complexity. A single AIC value does not say much by itself; it becomes useful when comparing candidate models fit to the same response data. In that setting, the model with the lower AIC is usually preferred because it achieves a better fit-complexity tradeoff.
+
+</details>
+::::
+:::
+
+::: {.Question}
+::::{.Question-header}
+Question 4.19
+::::
+::::{.Question-container}
+**Open-ended Question**
+
+**In three to five sentences**, write a short storytelling summary for the server performance case study. Your summary should mention one main driver of slower response times, one factor associated with faster response times, and one practical recommendation for a technical team.
+::::
+:::
+
+::: {.Answer}
+::::{.Answer-header}
+Answer 4.19
+::::
+::::{.Answer-container}
+<details>
+
+<summary><strong>Click here to reveal the answer!</strong></summary>
+
+**Answer:**
+
+A strong answer would explain that heavier system load, more concurrent users, more database queries, and more complex requests are associated with slower response times. It should also mention that caching-related features, such as higher cache hit rate or CDN usage, are associated with faster response times. A practical recommendation could be to improve caching, optimize expensive endpoints, refine load balancing, or expand regional infrastructure, while remembering that the fitted effects are associations rather than causal guarantees.
+
+</details>
+::::
+:::
+
+### Coding Question
+
+### Problem 1 {.unnumbered}
+
+Placeholder for the Chapter 4 Gamma regression coding problem.
+
+:::
